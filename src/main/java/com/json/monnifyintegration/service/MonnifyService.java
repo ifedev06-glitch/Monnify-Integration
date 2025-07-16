@@ -26,35 +26,8 @@ import java.util.Base64;
 @Slf4j
 public class MonnifyService {
 
-    @Value("${monnify.api.key}")
-    private String apiKey;
-
-    @Value("${monnify.api.secret}")
-    private String secretKey;
-
+    private final AuthService authService;
     private final DefaultRestClient defaultRestClient;
-
-    private String accessToken;
-    private long expiryTime;
-    private AuthResponse lastAuthResponse;
-
-    public AuthResponse getAccessToken() {
-        if (accessToken != null && System.currentTimeMillis() < expiryTime) {
-            return lastAuthResponse;
-        }
-        String encoded = Base64.getEncoder()
-                .encodeToString((apiKey + ":" + secretKey).getBytes(StandardCharsets.UTF_8));
-        RestClient client = defaultRestClient.basicClient(encoded);
-        AuthResponse response = client.post()
-                .uri("/api/v1/auth/login")
-                .retrieve()
-                .body(AuthResponse.class);
-        accessToken = response.getResponseBody().getAccessToken();
-        expiryTime = System.currentTimeMillis() + (response.getResponseBody().getExpiresIn() * 1000);
-        lastAuthResponse = response;
-
-        return lastAuthResponse;
-    }
 
     public CreateWalletResponse CreateWallet(CreateWalletRequest request) throws JsonProcessingException {
 
@@ -81,19 +54,6 @@ public class MonnifyService {
         }
     }
 
-    public MonnifyTransferResponseBody SingleTransfer(MonnifyTransferRequest request) {
-
-        AuthResponse authResponse = authService.getAccessToken();
-        String token = authResponse.getResponseBody().getAccessToken();
-        RestClient client = defaultRestClient.bearerClient(token);
-        MonnifyTransferResponseBody response = client.post()
-                .uri("/api/v2/disbursements/single")
-                .body(request)
-                .retrieve()
-                .body(MonnifyTransferResponseBody.class);
-        return response;
-
-    }
 
     public MonnifyTransferResponseBody SingleTransfer(MonnifyTransferRequest request) {
 
